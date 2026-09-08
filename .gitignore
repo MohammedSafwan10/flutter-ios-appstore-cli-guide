@@ -1,0 +1,33 @@
+# OS & Editor files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+.vscode/
+.idea/
+
+# Security & Secrets (STRICT: NEVER COMMIT KEYS OR CREDENTIALS)
+*.p8
+*.p12
+*.pem
+*.key
+*.cer
+*.mobileprovision
+*.mobileprofile
+.env
+.env.*
+!.env.example
+secrets/
+private_keys/
+
+# Build Artefacts & Archives
+*.ipa
+*.xcarchive
+*.dSYM.zip
+build/
+DerivedData/
+*.xcresult
+
+# Logs
+*.log
+*.xcdistributionlogs
