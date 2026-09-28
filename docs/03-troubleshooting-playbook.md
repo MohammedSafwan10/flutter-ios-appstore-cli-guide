@@ -123,3 +123,64 @@ Packages using Dart Native Assets (such as `dartcv4`) attempt to compile C/C++ l
 
 ### Fix
 This error only affects host desktop unit tests. For iOS builds (`flutter build ipa`), CocoaPods and Xcode compile for `arm64-apple-ios` directly without invoking host desktop CMake. Run `flutter analyze` to verify code correctness, and proceed to `flutter build ipa`.
+
+---
+
+## 6. Xcode License Agreement Block on Headless CLI
+
+### Symptoms
+`git`, `flutter`, or `dart` commands fail or hang with:
+```
+You have not agreed to the Xcode license agreements. Please run 'sudo xcodebuild -license'
+```
+
+### Cause
+When Xcode is updated to a new major version (e.g., Xcode 27), Apple requires a root-level license agreement before CLI toolchains linked to `/Applications/Xcode.app` can execute.
+
+### Fix
+1. For git or static analysis operations that don't need the full Xcode IDE SDK, bypass using Command Line Tools:
+   ```bash
+   DEVELOPER_DIR=/Library/Developer/CommandLineTools git <subcommand>
+   DEVELOPER_DIR=/Library/Developer/CommandLineTools dart analyze
+   ```
+2. For Xcode builds (`flutter build ipa` or `xcodebuild`), accept the updated license:
+   ```bash
+   sudo xcodebuild -license accept
+   ```
+
+---
+
+## 7. Xcode 27+ Deployment Target Integrity Error
+
+### Symptoms
+During `flutter build ipa`:
+```
+Target Integrity (Xcode): The iOS deployment target 'IPHONEOS_DEPLOYMENT_TARGET'
+is set to 9.0 (or 11.0, 12.0, 14.0), but the range of supported deployment target versions is 15.0 to 27.0.x.
+Encountered error while archiving for device.
+```
+
+### Cause
+Xcode 27 and newer dropped support for iOS deployment targets below `15.0`. Older CocoaPods plugins specify legacy minimums (e.g. 9.0 or 12.0).
+
+### Fix
+Enforce a minimum deployment target of `15.0` inside `ios/Podfile` under the `post_install` hook:
+```ruby
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+    target.build_configurations.each do |config|
+      if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 15.0
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      end
+    end
+  end
+
+  installer.pods_project.build_configurations.each do |config|
+    if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 15.0
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
+  end
+end
+```
+Then run `pod install` in `ios/` to regenerate `Pods.xcodeproj`.
